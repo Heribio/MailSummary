@@ -4,40 +4,88 @@ import (
     "fmt"
     "encoding/json"
     "io/ioutil"
-    //"os"
+    "net/smtp"
+    "github.com/joho/godotenv"
+    "log"
+    "os"
+    "bufio"
 )
 
 func main() {
-    checkUserData()
+    err := godotenv.Load("./config/.env")
+    if err != nil {
+        log.Fatal(err)
+    }
+    inputType()
+}
+
+func inputType() {
+    var input string
+
+    fmt.Println("What do you want to do ? 'help' for help")
+    fmt.Scan(& input)
+    if input == "clear" {
+        clearData()
+    }
+    if input == "write" {
+        writeUserData()
+    }
+    if input == "send" {
+        checkUserData()
+    }
+    if input == "help" {
+        help()
+    }
+    if input == "exit" {
+        return
+    }
+    inputType()
 }
 
 type userContent struct {
-    Name string `json: 'name'`
-    Code string `json: 'code'`
+    Subject string `json: 'subject'`
+    Content string `json: 'content'`
 }
 
-func userData() {
+func help() {
+    fmt.Println(`
+    Here are the commands.
+
+    write: write a new mail
+
+    send: send the mail
+
+    clear: clear the mail
+
+    exit: stop the program
+    `)
+}
+
+func writeUserData() {
     filePath := "./config/data.json"
     
-    var username string
-    var code string
-    fmt.Println("Name: ")
-    fmt.Scan(& username)
-    fmt.Println("Code: ")
-    fmt.Scan(& code)
+    reader := bufio.NewReader(os.Stdin)
+    fmt.Println("Subject: ")
+    subject, _ := reader.ReadString('\n')
+    fmt.Println("Content: ")
+    content, _ := reader.ReadString('\n')
     
     dataToWrite := userContent{
-        Name: username,
-        Code: code,
+        Subject: subject,
+        Content: content,
     }
     
     jsonData, err := json.MarshalIndent(dataToWrite, "", "    ")
-
     if err != nil {
         fmt.Println("Error encoding JSON:", err)
         return
     }
-    err = ioutil.WriteFile(filePath, jsonData, 0777)
+    fmt.Println(dataToWrite)
+    err = os.WriteFile(filePath, jsonData, 0777)
+    if err != nil {
+        fmt.Println("Error encoding JSON:", err)
+        return
+    }
 }
 
 func checkUserData() {
@@ -59,20 +107,21 @@ func checkUserData() {
 	}
     
     fmt.Println(data)
-    if data.Name != "" {
+    if data.Subject != "" {
         fmt.Println("All good")
+        sendMail(data.Subject, data.Content)
         return;
     } else {
         fmt.Println("not good")
-        userData()
-    }   
+        writeUserData()
+    }
 }
 
 func clearData() {
     filePath := "./config/data.json"
     dataToWrite := userContent{
-        Name: "",
-        Code: "",
+        Subject: "",
+        Content: "",
     }
 
     jsonData, err := json.MarshalIndent(dataToWrite, "", "    ")
@@ -84,3 +133,21 @@ func clearData() {
  
     err = ioutil.WriteFile(filePath, jsonData, 0777)
 }
+
+func sendMail(subject string, content string) {
+    senderMail := os.Getenv("SENDER_EMAIL")
+    targetName := os.Getenv("TARGET_EMAIL")
+    appPassword := os.Getenv("APP_PASSWORD")
+    fmt.Println(subject + content)
+    auth := smtp.PlainAuth("", senderMail, appPassword, "smtp.gmail.com")
+    to := []string{targetName}
+    msg := []byte("Subject: " + subject +  "\r\n\r\n" + content)
+    err := smtp.SendMail("smtp.gmail.com:587", auth, senderMail, to, msg)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+//func getMails() {
+//
+//}
