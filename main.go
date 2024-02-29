@@ -33,6 +33,9 @@ func inputType() {
     if input == "send" {
         checkUserData()
     }
+    if input == "see" {
+        seeMail()
+    }
     if input == "help" {
         help()
     }
@@ -42,9 +45,10 @@ func inputType() {
     inputType()
 }
 
-type userContent struct {
+type mailStructure struct {
     Subject string `json: 'subject'`
     Content string `json: 'content'`
+    MailAddress string `json: 'address'`
 }
 
 func help() {
@@ -56,6 +60,8 @@ func help() {
     send: send the mail
 
     clear: clear the mail
+
+    see: see the mail content
 
     exit: stop the program
     `)
@@ -69,10 +75,13 @@ func writeUserData() {
     subject, _ := reader.ReadString('\n')
     fmt.Println("Content: ")
     content, _ := reader.ReadString('\n')
+    fmt.Println("Target address: ")
+    address, _ := reader.ReadString('\n')
     
-    dataToWrite := userContent{
+    dataToWrite := mailStructure{
         Subject: subject,
         Content: content,
+        MailAddress: address,
     }
     
     jsonData, err := json.MarshalIndent(dataToWrite, "", "    ")
@@ -98,7 +107,7 @@ func checkUserData() {
     }
     err = ioutil.WriteFile(filePath, jsonData, 0777)   
 
-    var data userContent
+    var data mailStructure 
 
     err = json.Unmarshal(jsonData, &data)
 	if err != nil {
@@ -109,7 +118,7 @@ func checkUserData() {
     fmt.Println(data)
     if data.Subject != "" {
         fmt.Println("All good")
-        sendMail(data.Subject, data.Content)
+        sendMail(data.Subject, data.Content, data.MailAddress)
         return;
     } else {
         fmt.Println("not good")
@@ -119,9 +128,10 @@ func checkUserData() {
 
 func clearData() {
     filePath := "./config/data.json"
-    dataToWrite := userContent{
+    dataToWrite := mailStructure{
         Subject: "",
         Content: "",
+        MailAddress: "",
     }
 
     jsonData, err := json.MarshalIndent(dataToWrite, "", "    ")
@@ -134,18 +144,44 @@ func clearData() {
     err = ioutil.WriteFile(filePath, jsonData, 0777)
 }
 
-func sendMail(subject string, content string) {
+func sendMail(subject string, content string, address string) {
     senderMail := os.Getenv("SENDER_EMAIL")
-    targetName := os.Getenv("TARGET_EMAIL")
     appPassword := os.Getenv("APP_PASSWORD")
     fmt.Println(subject + content)
     auth := smtp.PlainAuth("", senderMail, appPassword, "smtp.gmail.com")
-    to := []string{targetName}
+    to := []string{address}
     msg := []byte("Subject: " + subject +  "\r\n\r\n" + content)
     err := smtp.SendMail("smtp.gmail.com:587", auth, senderMail, to, msg)
     if err != nil {
         log.Fatal(err)
     }
+}
+
+func seeMail() {
+    filePath := "./config/data.json"
+
+    jsonData, err := ioutil.ReadFile(filePath)
+
+    if err != nil {
+        fmt.Println("Error encoding JSON:", err)
+        return
+    }   
+    
+    var data mailStructure
+
+    err = json.Unmarshal(jsonData, &data)
+    if err != nil {
+        fmt.Println("Error unmarshaling JSON:", err)
+        return
+    }
+    
+    subject := data.Subject
+    content := data.Content
+    target := data.MailAddress
+
+    fmt.Println("Subject: ", subject)
+    fmt.Println("Content: ", content)
+    fmt.Println("Target: ", target)
 }
 
 //func getMails() {
