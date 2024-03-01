@@ -9,6 +9,7 @@ import (
     "log"
     "os"
     "bufio"
+    "strings"
 )
 
 func main() {
@@ -73,10 +74,13 @@ func writeUserData() {
     reader := bufio.NewReader(os.Stdin)
     fmt.Println("Subject: ")
     subject, _ := reader.ReadString('\n')
+    subject = strings.TrimRight(subject, "\n")
     fmt.Println("Content: ")
     content, _ := reader.ReadString('\n')
+    content = strings.TrimRight(content, "\n")
     fmt.Println("Target address: ")
     address, _ := reader.ReadString('\n')
+    address = strings.TrimRight(address, "\n")
     
     dataToWrite := mailStructure{
         Subject: subject,
